@@ -23,7 +23,7 @@ cat document.txt | REPLACE oud nieuw
 
 # Meerdere regels tegelijk vervangen
 cat mijn_levensverhaal.txt | REPLACE 'Deze hier is punk
-en anarchist' 'Deze hier is getrouwd
+en anarchist' 'Deze hier heeft een baantje
 en hij vist'
 
 # Nog meer snippets volgen snel...
