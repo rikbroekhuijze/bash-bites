@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="0.7"
+VERSION="0.8"
 MYBASENAME=$(basename "$0")
 
 show_usage() {
@@ -19,7 +19,8 @@ Parameters:
 Examples:
   $MYBASENAME "one two three four five" 3
   echo "one,two,three,four,five" | $MYBASENAME 3 ','
-  $MYBASENAME "one--two--three" 2 "--"
+  $MYBASENAME "one--two--three" 2 "--"     # Multi-char delimiter
+  $MYBASENAME "--test--" 1 "--"            # Delimiter that looks like an option
   
   # Extract third line from multi-line text
   echo "line one
@@ -61,42 +62,45 @@ TOKEN() {
     local tokens=()
     
     if [ "$delimiter" = $'\n' ]; then
-        # Split op newline met mapfile (werkt ook voor lege regels)
+        # Split op newline met mapfile
         mapfile -t tokens <<< "$haystack"
         
-        # Als de haystack eindigt met een newline, heeft mapfile een lege token aan het eind
-        # Dat willen we niet voor token counting
+        # Als de haystack eindigt met een newline, verwijder lege token
         if [ "${#tokens[@]}" -gt 0 ] && [ -z "${tokens[${#tokens[@]}-1]}" ] && [[ "$haystack" == *$'\n' ]]; then
-            # Haal de laatste lege token weg
             unset 'tokens[${#tokens[@]}-1]'
         fi
     else
-        # Andere delimiters met IFS
-        IFS="$delimiter" read -ra tokens <<< "$haystack"
+        # Vervang delimiter door een uniek controleteken
+        local unique_delim=$'\001'
+        local processed=$(echo "$haystack" | sed "s|$delimiter|$unique_delim|g")
+        IFS="$unique_delim" read -ra tokens <<< "$processed"
     fi
     
     # Check of token bestaat
     if [[ "$n" -gt "${#tokens[@]}" ]]; then
-        return 1  # Stil falen zoals bij 'cut'
+        return 1
     fi
     
-    # Return het gevraagde token
-    echo "${tokens[n-1]}"
+    # Alleen echoën als token niet leeg is
+    if [ -n "${tokens[n-1]}" ]; then
+        echo "${tokens[n-1]}"
+    fi
+    # Als token leeg is: helemaal niets doen (geen output)
 }
 
 # MAIN 
 args=()
+found_double_dash=0
 
 # Check voor pipe input
 if [ ! -t 0 ]; then
-    # Lees ALLE stdin (behoudt newlines)
     stdin_content=$(cat)
     if [ -n "$stdin_content" ]; then
         args+=("$stdin_content")
     fi
 fi
 
-# Voeg command line argumenten toe
+# Voeg command line argumenten toe, maar behandel -- speciaal
 for arg in "$@"; do
     case "$arg" in
         -h|--help)
@@ -106,6 +110,17 @@ for arg in "$@"; do
         -v|--version)
             echo "$VERSION"
             exit 0
+            ;;
+        --)
+            # Een losse -- betekent niet het einde van opties, 
+            # maar kan de delimiter zijn
+            if [ ${#args[@]} -ge 2 ]; then
+                # Als we al 2 args hebben, is dit waarschijnlijk de delimiter
+                args+=("$arg")
+            else
+                # Anders is het een echte --
+                found_double_dash=1
+            fi
             ;;
         *)
             args+=("$arg")
