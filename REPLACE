@@ -1,103 +1,17 @@
-#!/bin/env bash
-
-VERSION="1.4"
-MYBASENAME=$(basename "$0")
-SCRIPT_NAME="$MYBASENAME"
-
-show_usage() {
-    cat << EOF
-$SCRIPT_NAME [option] <haystack> <needle> <replacement>
-
-<haystack> can be replaced with piped input.
-
-Substitutes a substring <needle> in <haystack> with <replacement> and returns the result.
-The <replacement> does not necessarily need to be of the same size as the substring.
-
-See also EXTRACT
-
-options :
- -v --version     version.
- -h --help        help.
-
-example:
-
-$SCRIPT_NAME "Hello world" l p
-$SCRIPT_NAME "Some text" me 123
-echo "Hello world" | $SCRIPT_NAME l p
-
-EOF
-}
-
-# Cross-platform versie (werkt ook op macOS)
-if command -v readlink >/dev/null 2>&1 && readlink -f . >/dev/null 2>&1; then
-    SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
-else
-    # Fallback voor macOS (gebruik cd + pwd truc)
-    SCRIPT_PATH="$( cd "$(dirname "${BASH_SOURCE[0]}")" && pwd )/$(basename "${BASH_SOURCE[0]}")"
-fi
-
-SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
-
-REPLACE() {
-  
-    haystack=$1
-    needle=$2
-    replacement=${3:-""}
-    
-    #echo "$haystack" | tr "$needle" "$replacement"
-    echo "$haystack" | sed "s/$needle/$replacement/g"
-    
-}
 
 # Verwerk de argumenten
 args=()
 
-if [ -t 0 ]; then
-  # No stdin input, use haystack from command line
-  true
-else
-  # Read args from stdin
-  read -r var
-  if [ ! -z "$var" ] ; then
-    args+=("$var")
-  fi
+# Check voor pipe input
+if [ ! -t 0 ]; then
+    # Lees alle regels van stdin
+    stdin_content=""
+    while IFS= read -r line; do
+        if [ -z "$stdin_content" ]; then
+            stdin_content="$line"
+        else
+            stdin_content="$stdin_content"$'\n'"$line"
+        fi
+    done
+    args+=("$stdin_content")
 fi
-
-for arg in "$@"; do
-
-  case "$arg" in
-  
-    -h|--help)
-       show_usage
-       exit 0
-       ;;
-    
-    -v|--version)
-       echo "$VERSION"
-       exit 0
-       ;;
-     
-    *)
-       # Continue with normal operation
-       args+=("$arg")
-       ;;
-     
-  esac
- 
-done
-
-if [ "${#args[@]}" -lt "1" ] ; then
-  echo >&2
-  echo "ERROR!Too few arguments provided." >&2
-  echo "Try $SCRIPT_NAME --help" >&2
-  exit 123
-fi
-
-if [ "${#args[@]}" -gt "3" ] ; then
-  echo >&2
-  echo "ERROR!Too manny arguments provided." >&2
-  echo "Try $SCRIPT_NAME --help" >&2
-  exit 123
-fi
-
-REPLACE "${args[@]}"
