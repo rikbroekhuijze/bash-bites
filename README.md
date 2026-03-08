@@ -1,33 +1,29 @@
 # bash-bites 🍪
 
-Kleine, leesbare Bash-snippets die het leven makkelijker maken. 
-Geen cryptische one-liners, maar begrijpelijke tools voor normale mensen.
+Small, readable Bash snippets for normal people.  
+No cryptic one-liners, just tools that do what they promise.
 
-Small, readable Bash snippets for normal people.
+> Replace text in strings OR files with one simple command.
+> `cat file.txt | REPLACE search replace`
 
-The README is in Dutch, but the code speaks for itsef ;°)
+## Why bash-bites?
 
-> Vervang teksten in strings OF bestanden met één simpel commando.
-> `cat bestand.txt | REPLACE zoekwoord vervanging`
+- **Readable** - No regex rage, just functions that do what they say
+- **Learnable** - Understand your code, become a better Bash writer
+- **Free & Open** - MIT licensed, always
 
-## Waarom bash-bites?
-
-- **Leesbaar** - Geen regex-rage, gewoon functies die doen wat ze beloven
-- **Leerzaam** - Snap je code, word een betere bash-schrijver
-- **Gratis & Open** - MIT gelicenseerd, altijd
-
-## Voorbeelden
+## Examples
 
 ```bash
-# Vervang "wereld" door "iedereen" in een string
-REPLACE "Hallo wereld" wereld iedereen
+# Replace "world" with "everyone" in a string
+REPLACE "Hello world" world everyone
 
-# Vervang "oud" door "nieuw" in een bestand (via pipe)
-cat document.txt | REPLACE oud nieuw
+# Replace "old" with "new" in a file (via pipe)
+cat document.txt | REPLACE old new
 
-# Meerdere regels tegelijk vervangen
-cat mijn_levensverhaal.txt | REPLACE 'Deze hier is punk
-en anarchist' 'Deze hier heeft een baantje
-en hij vist'
+# Replace multiple lines at once
+cat my_life_story.txt | REPLACE 'This guy used to be punk
+and anarchist' 'This guy now has a job
+and goes fishing'
 
-# Nog meer snippets volgen snel...
+# More snippets coming soon...
