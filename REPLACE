@@ -13,8 +13,6 @@ $SCRIPT_NAME [option] <haystack> <needle> <replacement>
 Substitutes a substring <needle> in <haystack> with <replacement> and returns the result.
 The <replacement> does not necessarily need to be of the same size as the substring.
 
-See also EXTRACT
-
 options :
  -v --version     version.
  -h --help        help.
