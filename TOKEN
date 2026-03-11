@@ -1,7 +1,15 @@
 #!/bin/bash
 
-VERSION="0.8"
+VERSION="0.9"
 MYBASENAME=$(basename "$0")
+
+check_version() {
+  # Check bash versie (mapfile bestaat sinds bash 4.0)
+  if [ "${BASH_VERSINFO[0]}" -lt 4 ]; then
+    echo "Warning: Your bash version is ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}" >&2
+    echo "mapfile needs bash 4.0 or higher. Upgrade bash for full support." >&2
+  fi
+}
 
 show_usage() {
     cat << EOF
@@ -87,6 +95,8 @@ TOKEN() {
     fi
     # Als token leeg is: helemaal niets doen (geen output)
 }
+
+check_version
 
 # MAIN 
 args=()
