@@ -1,104 +1,153 @@
 #!/bin/env bash
 
-VERSION="1.5"
+VERSION="1.9"
 MYBASENAME=$(basename "$0")
 SCRIPT_NAME="$MYBASENAME"
 
+check_version() {
+  # Check bash versie (mapfile bestaat sinds bash 4.0)
+  if [ "${BASH_VERSINFO[0]}" -lt 4 ]; then
+    echo "Warning: Your bash version is ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}" >&2
+    echo "mapfile needs bash 4.0 or higher. Upgrade bash for full support." >&2
+  fi
+}
+
 show_usage() {
     cat << EOF
-$SCRIPT_NAME [option] <haystack> <needle> <replacement>
+    
+Usage: $SCRIPT_NAME [option] <haystack> <needle> <replacement>
 
 <haystack> can be replaced with piped input.
 
-Substitutes a substring <needle> in <haystack> with <replacement> and returns the result.
-The <replacement> does not necessarily need to be of the same size as the substring.
+Substitutes ALL occurrences of <needle> in <haystack> with <replacement>.
+The <needle> can be a single line or multiple lines.
+The <replacement> does not need to be the same size as the substring.
 
-options :
- -v --version     version.
- -h --help        help.
+Examples:
+  $SCRIPT_NAME "Hello world" world "everyone"
+  $SCRIPT_NAME "Some text" me 123
+  echo "Hello world" | $SCRIPT_NAME world "everyone"
+  
+  # Multi-line replacement
+  echo "line one
+line two
+line three
+line four" | $SCRIPT_NAME  'line two
+line three' 'line five
+line six'
 
-example:
+  # Replacement with newline in replacement
+  echo "one,two,three" | $SCRIPT_NAME ',' $',\n'
 
-$SCRIPT_NAME "Hello world" l p
-$SCRIPT_NAME "Some text" me 123
-echo "Hello world" | $SCRIPT_NAME l p
-
+Options:
+  -v, --version     Show version
+  -h, --help        Show this help message
 EOF
+
+  check_version
+  echo
+  
 }
-
-# Cross-platform versie (werkt ook op macOS)
-if command -v readlink >/dev/null 2>&1 && readlink -f . >/dev/null 2>&1; then
-    SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
-else
-    # Fallback voor macOS (gebruik cd + pwd truc)
-    SCRIPT_PATH="$( cd "$(dirname "${BASH_SOURCE[0]}")" && pwd )/$(basename "${BASH_SOURCE[0]}")"
-fi
-
-SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 REPLACE() {
-  
-    haystack=$1
-    needle=$2
-    replacement=${3:-""}
+    local haystack="$1"
+    local needle="$2"
+    local replacement="${3:-}"
+    local result=""
+    local line
     
-    #echo "$haystack" | tr "$needle" "$replacement"
-    echo "$haystack" | sed "s/$needle/$replacement/g"
+    # Als needle leeg is, geef dan haystack terug
+    if [ -z "$needle" ]; then
+        if [ -n "$haystack" ]; then
+            echo "$haystack"
+        fi
+        return
+    fi
     
+    # Als needle GEEN newline bevat, kunnen we simpel vervangen per regel
+    if [[ "$needle" != *$'\n'* ]]; then
+        # Split haystack in regels met mapfile
+        local lines=()
+        mapfile -t lines <<< "$haystack"
+        
+        # Vervang in elke regel
+        for line in "${lines[@]}"; do
+            if [ -n "$result" ]; then
+                result+=$'\n'
+            fi
+            result+="${line//$needle/$replacement}"
+        done
+        
+        # Alleen output als resultaat niet leeg is
+        if [ -n "$result" ]; then
+            echo "$result"
+        fi
+        return
+    fi
+    
+    # Als needle WEL een newline bevat, wordt het lastiger...
+    # Dan moeten we de hele haystack als één string behandelen
+    # We gebruiken bash's pattern replacement op de hele string
+    # Dit werkt, maar is langzamer bij grote bestanden
+    result="${haystack//$needle/$replacement}"
+    
+    # Alleen output als resultaat niet leeg is
+    if [ -n "$result" ]; then
+        echo "$result"
+    fi
 }
 
-# Verwerk de argumenten
+check_version
+
+# MAIN 
 args=()
 
 # Check voor pipe input
 if [ ! -t 0 ]; then
-    # Lees alle regels van stdin
-    stdin_content=""
-    while IFS= read -r line; do
-        if [ -z "$stdin_content" ]; then
-            stdin_content="$line"
-        else
-            stdin_content="$stdin_content"$'\n'"$line"
-        fi
-    done
-    args+=("$stdin_content")
+    # Lees ALLE stdin, behoud newlines
+    stdin_content=$(cat)
+    if [ -n "$stdin_content" ]; then
+        args+=("$stdin_content")
+    fi
 fi
 
+# Verwerk argumenten
 for arg in "$@"; do
-
-  case "$arg" in
-  
-    -h|--help)
-       show_usage
-       exit 0
-       ;;
-    
-    -v|--version)
-       echo "$VERSION"
-       exit 0
-       ;;
-     
-    *)
-       # Continue with normal operation
-       args+=("$arg")
-       ;;
-     
-  esac
- 
+    case "$arg" in
+        -h|--help)
+            show_usage
+            exit 0
+            ;;
+        -v|--version)
+            echo "$VERSION"
+            exit 0
+            ;;
+        *)
+            args+=("$arg")
+            ;;
+    esac
 done
 
-if [ "${#args[@]}" -lt "1" ] ; then
-  echo >&2
-  echo "ERROR!Too few arguments provided." >&2
-  echo "Try $SCRIPT_NAME --help" >&2
-  exit 123
+# Valideer aantal argumenten
+if [ "${#args[@]}" -lt 2 ]; then
+    echo >&2
+    echo "ERROR! Need at least haystack and needle" >&2
+    echo "Try $SCRIPT_NAME --help" >&2
+    exit 123
 fi
 
-if [ "${#args[@]}" -gt "3" ] ; then
-  echo >&2
-  echo "ERROR!Too manny arguments provided." >&2
-  echo "Try $SCRIPT_NAME --help" >&2
-  exit 123
+if [ "${#args[@]}" -gt 3 ]; then
+    echo >&2
+    echo "ERROR! Too many arguments" >&2
+    echo "Try $SCRIPT_NAME --help" >&2
+    exit 123
 fi
 
+# Als er maar 2 argumenten zijn, is replacement leeg
+if [ "${#args[@]}" -eq 2 ]; then
+    args+=("")
+fi
+
+# Voer REPLACE uit
 REPLACE "${args[@]}"
+exit $?
