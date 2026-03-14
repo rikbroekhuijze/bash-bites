@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="0.1"
+VERSION="0.2"
 MYBASENAME=$(basename "$0")
 
 show_usage() {
@@ -63,7 +63,9 @@ args=()
 
 # Check voor pipe input
 if [ ! -t 0 ]; then
-    stdin_content=$(cat)
+    # Lees ALLE stdin met de nieuwe methode (behoudt newlines!)
+    stdin_content=$(cat; echo bla)
+    stdin_content="${stdin_content::-4}"
     if [ -n "$stdin_content" ]; then
         args+=("$stdin_content")
     fi
